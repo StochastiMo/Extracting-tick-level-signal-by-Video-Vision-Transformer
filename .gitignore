@@ -1,0 +1,82 @@
+# macOS / editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+
+# Large local datasets and serialized objects
+*.parquet
+*.csv
+*.pq
+*.feather
+*.arrow
+*.pkl
+*.pickle
+*.joblib
+*.npy
+*.npz
+*.h5
+*.hdf5
+
+# Machine-learning checkpoints and experiment trackers
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+events.out.tfevents.*
+wandb/
+mlruns/
+
+# Local databases and platform state
+*.db
+*.sqlite
+*.sqlite3
+.autodl/
+
+# Archives, logs, and temporary files
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.log
+*.tmp
+*.bak
+*.orig
+*.rej
+*.pid
+*.pid.lock
+nohup.out
+
+# Project-generated datasets, predictions, diagnostics, and trained models
+/ViViT/data/
+/ViViT/models/
+
+# Local vendor data and downloaded reference material
+/Wind/
+/level2_pic/
+/研究报告/
+/styleguide _ Style guides for Google-originated open-source projects.pdf

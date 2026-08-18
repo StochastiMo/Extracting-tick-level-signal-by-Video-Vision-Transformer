@@ -1,0 +1,16 @@
+# 大体积派生数据和训练产物不进入版本管理。
+data/universe/*
+data/labels_t10/*
+data/feature_store/*
+data/quality/*
+data/predictions/*
+models/*
+__pycache__/
+.venv-factor-eval/
+
+!data/universe/.gitkeep
+!data/labels_t10/.gitkeep
+!data/feature_store/.gitkeep
+!data/quality/.gitkeep
+!data/predictions/.gitkeep
+!models/.gitkeep

@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "date_range": [
+    "20180102",
+    "20241231"
+  ],
+  "trading_days": 1698,
+  "aggregation": "daily_cross_sectional_pearson_then_equal_weight_time_mean",
+  "raw_factors": [
+    {
+      "label": "Baseline",
+      "run": "baseline",
+      "prediction_column": "prediction_ensemble"
+    },
+    {
+      "label": "Y-neutral",
+      "run": "Y_neutral",
+      "prediction_column": "prediction_ensemble"
+    },
+    {
+      "label": "X-neutral",
+      "run": "X_neutral",
+      "prediction_column": "prediction_ensemble"
+    },
+    {
+      "label": "XY-neutral",
+      "run": "XY_neutral",
+      "prediction_column": "prediction_ensemble"
+    },
+    {
+      "label": "R²-0.10",
+      "run": "penalty_r2_0p10",
+      "prediction_column": "prediction_ensemble"
+    },
+    {
+      "label": "R²-0.30",
+      "run": "penalty_r2_0p30",
+      "prediction_column": "prediction_ensemble"
+    },
+    {
+      "label": "R²-1.00",
+      "run": "penalty_r2_1p00",
+      "prediction_column": "prediction_ensemble"
+    },
+    {
+      "label": "Adversary",
+      "run": "adversary",
+      "prediction_column": "prediction_ensemble"
+    },
+    {
+      "label": "Gate+R²",
+      "run": "gate_penal_0p3",
+      "prediction_column": "prediction_ensemble"
+    },
+    {
+      "label": "Gate（投影前）",
+      "run": "gate_neutral",
+      "prediction_column": "prediction_ensemble_unprojected"
+    },
+    {
+      "label": "Dual tower Alpha",
+      "run": "dual_tower",
+      "prediction_column": "prediction_ensemble_alpha"
+    }
+  ],
+  "barra_columns": [
+    "cne5s_beta",
+    "cne5s_btop",
+    "cne5s_earnyild",
+    "cne5s_growth",
+    "cne5s_leverage",
+    "cne5s_liquidty",
+    "cne5s_momentum",
+    "cne5s_size",
+    "cne5s_sizenl",
+    "reversal_20d"
+  ],
+  "barra_sample_policy": "complete_case_barra_matched_and_reversal_valid",
+  "pairwise_sample_policy": "common_prediction_keys",
+  "files": {
+    "barra_mean": "raw_factor_vs_barra_mean_pearson.parquet",
+    "barra_daily": "raw_factor_vs_barra_daily_pearson.parquet",
+    "pairwise_mean": "raw_factor_pairwise_mean_pearson.parquet",
+    "pairwise_daily": "raw_factor_pairwise_daily_pearson.parquet",
+    "barra_figure": "raw_factor_vs_barra_correlation.png",
+    "pairwise_figure": "raw_factor_pairwise_correlation.png"
+  },
+  "visualization": {
+    "pairwise_correlation": {
+      "palette": "RdBu_r",
+      "color_min": 0.0,
+      "color_max": 1.0,
+      "upper_triangle_masked": true
+    }
+  }
+}
