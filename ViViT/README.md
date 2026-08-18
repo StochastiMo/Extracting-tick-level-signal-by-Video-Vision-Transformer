@@ -117,7 +117,7 @@ Barra 与行情只按同日股票键精确连接
 | `date_ids` | `[B]` | 完整交易日分组 |
 | `sample_indices` | `[B]` | 回连业务键和 sidecar |
 
-No.1–No.6 使用 [`StyleNeutralBatchCollator`](stage06_barra_training.py#L963)，额外提供原始/残差/拟合标签、风险暴露、有效掩码和行业代码。涉及日截面排序、回归或投影的方案必须使用完整交易日 batch。
+No.1–No.6 使用 [`StyleNeutralBatchCollator`](stage06_barra_training.py#L1020)，额外提供原始/残差/拟合标签、风险暴露、有效掩码和行业代码。涉及日截面排序、回归或投影的方案必须使用完整交易日 batch。
 
 ### 5.2 ViViT 主干
 
@@ -141,7 +141,7 @@ No.1–No.6 使用 [`StyleNeutralBatchCollator`](stage06_barra_training.py#L963)
 
 ### 5.4 统一训练后端
 
-[`configure_from_args`](stage06_barra_training.py#L425) 解析并校验实验组合，[`build_training_model`](stage06_barra_training.py#L736) 构造模型，[`forward_training_model`](stage06_barra_training.py#L860) 分派前向路径，[`effective_predictions`](stage06_barra_training.py#L1806) 决定训练和验证实际使用的分数。
+[`configure_from_args`](stage06_barra_training.py#L459) 解析并校验实验组合，[`build_training_model`](stage06_barra_training.py#L778) 构造模型，[`forward_training_model`](stage06_barra_training.py#L902) 分派前向路径，[`effective_predictions`](stage06_barra_training.py#L1884) 决定训练和验证实际使用的分数。
 
 年度训练以 year×seed 为任务单元：
 
@@ -156,7 +156,7 @@ flowchart LR
     G --> H["三 seed 日截面标准化与集成"]
 ```
 
-单任务入口为 [`train_task`](stage06_barra_training.py#L3145)，年度/种子调度为 [`run_a2`](stage06_barra_training.py#L6556)。后台持久任务由 [`launch_training_job`](stage07_training_jobs.py#L562) 启动，并由 [`training_job_status`](stage07_training_jobs.py#L367) 查询。
+单任务入口为 [`train_task`](stage06_barra_training.py#L3651)，年度/种子调度为 [`run_a2`](stage06_barra_training.py#L7373)。后台持久任务由 [`launch_training_job`](stage07_training_jobs.py#L572) 启动，并由 [`training_job_status`](stage07_training_jobs.py#L377) 查询。
 
 ### 5.5 样本外评价与事后中性化
 
@@ -231,10 +231,10 @@ ViViT/models/runs/<run_name>/
 | No.4 | [`prepare_conditioning_inputs`](stage04_no4_gate.py#L65)、[`BarraConditionalViViT`](stage04_no4_gate.py#L115) |
 | No.5 | [`strict_neutral_output`](stage04_no5_strict_neutral.py#L11) |
 | No.6 | [`BarraDualTowerViViT`](stage04_no6_dual_tower.py#L63)、[`dual_tower_training_loss`](stage04_no6_dual_tower.py#L237) |
-| 变体模型工厂 | [`build_training_model`](stage06_barra_training.py#L736)、[`forward_training_model`](stage06_barra_training.py#L860) |
-| 统一训练与预测 | [`train_one_epoch`](stage06_barra_training.py#L1863)、[`evaluate_model`](stage06_barra_training.py#L2220)、[`predict_model`](stage06_barra_training.py#L2660) |
-| 单任务与集成 | [`train_task`](stage06_barra_training.py#L3145)、[`build_ensemble`](stage06_barra_training.py#L3792) |
-| 训练调度 | [`run_a2`](stage06_barra_training.py#L6556)、[`launch_training_job`](stage07_training_jobs.py#L562) |
+| 变体模型工厂 | [`build_training_model`](stage06_barra_training.py#L778)、[`forward_training_model`](stage06_barra_training.py#L902) |
+| 统一训练与预测 | [`train_one_epoch`](stage06_barra_training.py#L2171)、[`evaluate_model`](stage06_barra_training.py#L2623)、[`predict_model`](stage06_barra_training.py#L3108) |
+| 单任务与集成 | [`train_task`](stage06_barra_training.py#L3651)、[`build_ensemble`](stage06_barra_training.py#L4390) |
+| 训练调度 | [`run_a2`](stage06_barra_training.py#L7373)、[`launch_training_job`](stage07_training_jobs.py#L572) |
 
 ### 7.4 评价与派生因子
 
@@ -257,8 +257,8 @@ ViViT/models/runs/<run_name>/
 | 标签跨越验证或预测边界 | 使用 `exit_trade_date` 做两层 purge | [`build_feature_store`](../ViT/vit_stage04_feature_store.py#L45) |
 | 历史缺帧被前向填充 | 精确日期槽位，缺失=-1 | [`build_history_indices`](stage01_sequence_data.py#L262) |
 | 图片、标签、Barra 错位 | 全链路共享 `sample_index` | [`VideoBatchCollator`](stage01_sequence_data.py#L571) |
-| 日截面被拆批 | Barra 变体强制完整交易日 batch | [`make_style_loaders`](stage06_barra_training.py#L1122) |
-| 训练与发布分数混淆 | 显式维护 raw/effective/published | [`effective_predictions`](stage06_barra_training.py#L1806) |
+| 日截面被拆批 | Barra 变体强制完整交易日 batch | [`make_style_loaders`](stage06_barra_training.py#L1179) |
+| 训练与发布分数混淆 | 显式维护 raw/effective/published | [`effective_predictions`](stage06_barra_training.py#L1884) |
 | 预测覆盖不完整 | 评价前做键集合全等检查 | [`audit_evaluation_inputs`](stage08_factor_evaluation.py#L1402) |
 
 这份 README 是工程流程和源码定位的唯一入口。方案原理不在此重复，实验指标也不在此维护。

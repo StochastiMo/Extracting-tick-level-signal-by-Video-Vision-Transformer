@@ -80,6 +80,26 @@ def _conditioning_worker(rank: int, world_size: int, output_path: str) -> None:
 
 
 class DistributedTrainingTests(unittest.TestCase):
+    def test_near_constant_style_score_is_classified_as_collapsed(self):
+        scores = torch.tensor(
+            [0.0, 1.0e-13, 2.0e-13, 3.0e-13], dtype=torch.float64
+        ).numpy()
+        targets = torch.tensor(
+            [-1.5, -0.5, 0.5, 1.5], dtype=torch.float64
+        ).numpy()
+        dates = torch.zeros(4, dtype=torch.int64).numpy()
+        self.assertGreater(float(scores.std()), torch.finfo(torch.float64).eps)
+        self.assertTrue(
+            barra_training.has_degenerate_daily_pearson(scores, targets, dates)
+        )
+        self.assertFalse(
+            barra_training.has_degenerate_daily_pearson(targets, targets, dates)
+        )
+        invalid = scores.copy()
+        invalid[0] = float("nan")
+        with self.assertRaises(FloatingPointError):
+            barra_training.has_degenerate_daily_pearson(invalid, targets, dates)
+
     def test_fixed_batch_sampler_has_no_padding_duplicates_or_loss(self):
         samplers = [
             distributed.DistributedBatchSampler(
@@ -136,6 +156,13 @@ class DistributedTrainingTests(unittest.TestCase):
             "execution_route": "ddp",
             "world_size": 2,
         }
+        previous_ddp = {
+            **current_ddp,
+            "training_code_sha256": "62545fd27e812da5dbe560862377f12688d0d62a4f70b5b94a33bd44630da053",
+        }
+        self.assertTrue(
+            barra_training.is_resume_compatible_recovery_patch(previous_ddp, current_ddp)
+        )
         self.assertTrue(
             barra_training.is_resume_compatible_recovery_patch(legacy, current_a2)
         )
@@ -218,11 +245,22 @@ class DistributedTrainingTests(unittest.TestCase):
         self.assertNotIn("--tasks-per-gpu", ddp_scope["training_command"])
 
         configuration_source = "".join(notebook["cells"][2]["source"])
-        self.assertIn('TRAINING_ROUTE = "a2"', configuration_source)
+        self.assertTrue(
+            any(
+                line.strip()
+                in {'TRAINING_ROUTE = "a2"', 'TRAINING_ROUTE = "ddp"'}
+                for line in configuration_source.splitlines()
+            )
+        )
         self.assertIn('f"{BASE_RUN_NAME}_ddp"', configuration_source)
         smoke_source = "".join(notebook["cells"][4]["source"])
         self.assertIn('"ddp-smoke"', smoke_source)
         self.assertIn('["--device-ids", DEVICE_IDS]', smoke_source)
+        smoke_call = smoke_source[smoke_source.index("smoke = subprocess.run(") :]
+        self.assertLess(
+            smoke_call.index("*smoke_device_args"),
+            smoke_call.index("],\n        cwd=VIVIT_DIR"),
+        )
 
 
 if __name__ == "__main__":

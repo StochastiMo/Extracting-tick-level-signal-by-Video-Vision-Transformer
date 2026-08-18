@@ -50,6 +50,7 @@ from vit_stage06_ranking import (
 )
 from vit_stage07_training import (
     TradeDateBatchSampler,
+    numpy_pearson,
     summarize_validation_arrays,
 )
 
@@ -169,6 +170,9 @@ INDUSTRY_COUNT = style_data.EXPECTED_CNE5S_INDUSTRIES
 PUBLISHED_FACTOR_POLICY = "unprojected_model_score_daily_seed_zscore_mean"
 # 构造去重集合，并保存到 `RESUME_COMPATIBLE_TRAINING_CODE_SHA256`。
 RESUME_COMPATIBLE_TRAINING_CODE_SHA256 = {
+    # No.6 DDP Style Pearson 塌缩诊断阈值修复前的版本；
+    # 训练目标和模型参数未变化，允许相同 route/world size 安全恢复。
+    "62545fd27e812da5dbe560862377f12688d0d62a4f70b5b94a33bd44630da053",
     # No.6 BF16 Total 后处理修复前的已完成双塔训练版本；
     # 仅代码哈希可不同，其余 run payload 仍须逐字段完全一致。
     "ba9380f4f16b7a94763bbb73a214722a5346667ee22e03bf1ae445d9d5bd071e",
@@ -2565,6 +2569,55 @@ def instrument_ids() -> np.ndarray:
     return _INSTRUMENT_IDS
 
 
+# 定义 has_degenerate_daily_pearson 函数，统一复用验证 Pearson 的退化判据。
+def has_degenerate_daily_pearson(
+    predictions: np.ndarray,
+    targets: np.ndarray,
+    date_ids: np.ndarray,
+) -> bool:
+    """判断是否存在无法计算 Pearson 的交易日截面。
+
+    输入：
+        predictions: np.ndarray，逐样本预测。
+        targets: np.ndarray，逐样本目标。
+        date_ids: np.ndarray，逐样本交易日编号。
+    输出：
+        bool，存在近常数预测或目标时为 True。
+    """
+    # 调用 np.asarray 统一预测数组的形状和精度。
+    x = np.asarray(predictions, dtype=np.float64).reshape(-1)
+    # 调用 np.asarray 统一目标数组的形状和精度。
+    y = np.asarray(targets, dtype=np.float64).reshape(-1)
+    # 调用 np.asarray 统一交易日数组的形状和类型。
+    dates = np.asarray(date_ids, dtype=np.int64).reshape(-1)
+    # 检查三组输入等长且至少包含两个样本。
+    if not (len(x) == len(y) == len(dates)) or len(x) < 2:
+        # 抛出长度错误，避免把样本错位误判为分数塌缩。
+        raise ValueError("Style Pearson 预测、目标和日期必须等长且至少有两个样本")
+    # 检查预测和目标均为有限值。
+    if not np.isfinite(x).all() or not np.isfinite(y).all():
+        # 保持验证数据的 NaN/Inf 严格失败契约。
+        raise FloatingPointError("Style Pearson 预测或目标包含 NaN/Inf")
+    # 遍历每个交易日，复用正式验证函数的同一 Pearson 分母阈值。
+    for date in np.unique(dates):
+        # 计算当前交易日的样本掩码。
+        mask = dates == date
+        # 检查当前交易日至少包含两个样本。
+        if int(mask.sum()) < 2:
+            # 抛出截面样本不足错误，不将数据契约问题降级为诊断值。
+            raise ValueError("Style Pearson 存在不足两个样本的交易日")
+        # 尝试按正式验证口径计算 Pearson。
+        try:
+            # 调用 numpy_pearson 检查当前截面的统一数值判据。
+            numpy_pearson(x[mask], y[mask])
+        # 仅捕获分母退化错误，将其标记为 Style 塔塌缩。
+        except FloatingPointError:
+            # 返回 True，让调用方记录 NaN 审计指标而不中断主训练。
+            return True
+    # 所有交易日均可计算 Pearson，返回未塌缩。
+    return False
+
+
 # 使用 `torch.no_grad()` 包装 `evaluate_model`，并定义其可复用的处理逻辑。
 @torch.no_grad()
 def evaluate_model(
@@ -2935,11 +2988,9 @@ def evaluate_model(
             VALIDATION_METRIC,
             instrument_ids=instrument_ids()[selected],
         )
-        # 调用 `any` 判断是否存在任一不满足条件的截面，并将结果保存到 `style_collapsed`。
-        style_collapsed = any(
-            float(np.std(style_x[dates == date], ddof=0))
-            <= np.finfo(np.float64).eps
-            for date in np.unique(dates)
+        # 调用统一 Pearson 判据识别近常数 Style 预测或目标。
+        style_collapsed = has_degenerate_daily_pearson(
+            style_x, fitted_y, dates
         )
         # 检查 `style_collapsed`；根据条件结果选择对应处理分支。
         if style_collapsed:
