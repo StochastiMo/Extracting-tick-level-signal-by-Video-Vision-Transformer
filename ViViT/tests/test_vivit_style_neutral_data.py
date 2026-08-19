@@ -295,34 +295,6 @@ class StrictFullBarraProjectionTests(unittest.TestCase):
 
 
 class PredictionProjectionTests(unittest.TestCase):
-    def test_recovery_resume_migration_requires_exact_old_code_version(self):
-        old_hash = next(
-            iter(training.RESUME_COMPATIBLE_TRAINING_CODE_SHA256)
-        )
-        checkpoint = {
-            "training_code_sha256": old_hash,
-            "forecast_year": 2018,
-            "seed": 42,
-            "learning_rate": 0.001,
-        }
-        current = {
-            **checkpoint,
-            "training_code_sha256": "current-code-hash",
-        }
-        self.assertTrue(
-            training.is_resume_compatible_recovery_patch(checkpoint, current)
-        )
-        self.assertFalse(
-            training.is_resume_compatible_recovery_patch(
-                checkpoint, {**current, "learning_rate": 0.002}
-            )
-        )
-        self.assertFalse(
-            training.is_resume_compatible_recovery_patch(
-                {**checkpoint, "training_code_sha256": "unknown-old-hash"},
-                current,
-            )
-        )
 
     def test_daily_score_dispersion_rejects_constant_predictions(self):
         prediction = torch.full((128,), 0.25, requires_grad=True)

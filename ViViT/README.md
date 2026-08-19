@@ -71,7 +71,7 @@ Barra 与行情只按同日股票键精确连接
 - `can_enter_t1`：T+1 状态已知、非停牌且非涨跌停；
 - `entry_trade_date / exit_trade_date`：股票所属交易所的 T+1/T+11。
 
-合并行情前必须验证“股票×日期”唯一，防止重复键把候选行膨胀成笛卡尔积。正式入口为 [`build_universe`](../ViT/vit_stage02_universe.py#L334)。
+合并行情前必须验证“股票×日期”唯一，防止重复键把候选行膨胀成笛卡尔积。正式入口为 [`build_universe`](../ViT/vit_stage02_universe.py#L203)。
 
 ### 4.2 标签
 
@@ -79,15 +79,15 @@ Barra 与行情只按同日股票键精确连接
 
 ### 4.3 Feature store 与滚动切分
 
-[`build_feature_store`](../ViT/vit_stage04_feature_store.py#L45) 以 `feature_valid & in_universe_t` 构建全局图片数组和连续 `sample_index`。每个通道独立在 8×8 网格内归一化，标签以左连接方式附着。
+[`build_feature_store`](../ViT/vit_stage04_feature_store.py#L31) 以 `feature_valid & in_universe_t` 构建全局图片数组和连续 `sample_index`。每个通道独立在 8×8 网格内归一化，标签以左连接方式附着。
 
 每个预测年度分别生成 train、validation 和 prediction 索引。历史标签先按 `exit_trade_date` 排除跨越验证或预测边界的日期，再进行日期级 80%/20% 切分；预测索引保留预测年度全部有效图片。
 
 ### 4.4 20 日视频序列
 
-[`build_history_indices`](stage01_sequence_data.py#L262) 为每个样本查找同股票、精确 `date_id-lag` 的 20 个位置。缺失历史帧记为 -1，禁止用最近可得图片填充。[`build_sequence_store`](stage01_sequence_data.py#L400) 只落盘历史行号，不复制约 20 倍图片数据。
+[`build_history_indices`](stage01_sequence_data.py#L138) 为每个样本查找同股票、精确 `date_id-lag` 的 20 个位置。缺失历史帧记为 -1，禁止用最近可得图片填充。[`build_sequence_store`](stage01_sequence_data.py#L217) 只落盘历史行号，不复制约 20 倍图片数据。
 
-[`VideoBatchCollator`](stage01_sequence_data.py#L571) 在 worker 中批量读取 memmap，构造 `videos` 和 `frame_mask`；[`make_data_loaders`](stage01_sequence_data.py#L670) 建立基础 DataLoader。
+[`VideoBatchCollator`](stage01_sequence_data.py#L306) 在 worker 中批量读取 memmap，构造 `videos` 和 `frame_mask`；[`make_data_loaders`](stage01_sequence_data.py#L359) 建立基础 DataLoader。
 
 ### 4.5 Barra 训练 sidecar
 
@@ -95,11 +95,11 @@ Barra 与行情只按同日股票键精确连接
 
 | 产物 | shape | 构建入口 |
 |---|---|---|
-| `style_exposures.npy`、`style_valid.npy` | `[S,10]` | [`build_style_neutral_store`](stage02_barra_data.py#L1982) |
-| `targets_style_residual.npy` | `[S]` | [`residualize_daily_targets`](stage02_barra_data.py#L228) |
-| `industry_codes.npy` | `[S]` | [`build_industry_sidecar`](stage02_barra_data.py#L1161) |
-| `targets_full_barra_residual.npy` | `[S]` | [`build_full_barra_target_sidecar`](stage02_barra_data.py#L1417) |
-| `targets_full_barra_fitted.npy` | `[S]` | [`build_dual_tower_target_sidecar`](stage02_barra_data.py#L1696) |
+| `style_exposures.npy`、`style_valid.npy` | `[S,10]` | [`build_style_neutral_store`](stage02_barra_data.py#L1250) |
+| `targets_style_residual.npy` | `[S]` | [`residualize_daily_targets`](stage02_barra_data.py#L139) |
+| `industry_codes.npy` | `[S]` | [`build_industry_sidecar`](stage02_barra_data.py#L707) |
+| `targets_full_barra_residual.npy` | `[S]` | [`build_full_barra_target_sidecar`](stage02_barra_data.py#L868) |
+| `targets_full_barra_fitted.npy` | `[S]` | [`build_dual_tower_target_sidecar`](stage02_barra_data.py#L1057) |
 
 风险暴露只在当日有效截面标准化；数值缺失填零以便张量运算，同时保留 `style_valid`。详细回归、投影和目标分解推导统一放在技术报告。
 
@@ -117,11 +117,11 @@ Barra 与行情只按同日股票键精确连接
 | `date_ids` | `[B]` | 完整交易日分组 |
 | `sample_indices` | `[B]` | 回连业务键和 sidecar |
 
-No.1–No.6 使用 [`StyleNeutralBatchCollator`](stage06_barra_training.py#L1020)，额外提供原始/残差/拟合标签、风险暴露、有效掩码和行业代码。涉及日截面排序、回归或投影的方案必须使用完整交易日 batch。
+No.1–No.6 使用 [`StyleNeutralBatchCollator`](stage06_barra_training.py#L578)，额外提供原始/残差/拟合标签、风险暴露、有效掩码和行业代码。涉及日截面排序、回归或投影的方案必须使用完整交易日 batch。
 
 ### 5.2 ViViT 主干
 
-[`OrderFlowViViT`](stage03_model.py#L124) 将 `[B,17,20,8,8]` 视频编码为 `[B,128]` CLS 表征，再由收益头输出 `[B]` 分数。空间—时间结构、Tubelet、padding mask、Pre-LayerNorm 和梯度细节见技术报告；工程接口分别由 [`encode`](stage03_model.py#L262) 和模型级 [`forward`](stage03_model.py#L386) 定义。
+[`OrderFlowViViT`](stage03_model.py#L84) 将 `[B,17,20,8,8]` 视频编码为 `[B,128]` CLS 表征，再由收益头输出 `[B]` 分数。空间—时间结构、Tubelet、padding mask、Pre-LayerNorm 和梯度细节见技术报告；工程接口分别由 [`encode`](stage03_model.py#L178) 和模型级 [`forward`](stage03_model.py#L274) 定义。
 
 ### 5.3 实验实现入口
 
@@ -129,19 +129,19 @@ No.1–No.6 使用 [`StyleNeutralBatchCollator`](stage06_barra_training.py#L1020
 
 | 方案 | 实现入口 | 工程职责 |
 |---|---|---|
-| No.0 | [`baseline_loss`](stage04_no0_baseline.py#L11) | 无 Barra 约束的控制组 |
-| No.1 | [`neutral_training_loss`](stage04_no1_neutral.py#L11) | Y/X/XY 三种目标与有效分数选择 |
-| No.2 | [`r_squared_regularized_loss`](stage04_no2_r2_penalty.py#L11) | 原始分数联合风险解释度惩罚 |
-| No.3 | [`AdversarialBarraViViT`](stage04_no3_adversarial.py#L138) | GRL 风格头与行业头 |
-| No.4 | [`BarraConditionalViViT`](stage04_no4_gate.py#L115) | Barra 条件化乘法门控 |
-| No.5 | [`strict_neutral_output`](stage04_no5_strict_neutral.py#L11) | 训练图内严格投影输出 |
-| No.6 | [`BarraDualTowerViViT`](stage04_no6_dual_tower.py#L63) | Alpha/Style 双塔与 Total 分解 |
+| No.0 | [`baseline_loss`](stage04_no0_baseline.py#L10) | 无 Barra 约束的控制组 |
+| No.1 | [`neutral_training_loss`](stage04_no1_neutral.py#L10) | Y/X/XY 三种目标与有效分数选择 |
+| No.2 | [`r_squared_regularized_loss`](stage04_no2_r2_penalty.py#L10) | 原始分数联合风险解释度惩罚 |
+| No.3 | [`AdversarialBarraViViT`](stage04_no3_adversarial.py#L80) | GRL 风格头与行业头 |
+| No.4 | [`BarraConditionalViViT`](stage04_no4_gate.py#L68) | Barra 条件化乘法门控 |
+| No.5 | [`strict_neutral_output`](stage04_no5_strict_neutral.py#L10) | 训练图内严格投影输出 |
+| No.6 | [`BarraDualTowerViViT`](stage04_no6_dual_tower.py#L44) | Alpha/Style 双塔与 Total 分解 |
 
-机器可读实验注册由 [`resolve_experiment`](stage04_experiments.py#L55) 校验。各方案的输入、目标、损失、梯度通道和可识别性统一在技术报告中比较；完成状态和指标只在 Results 中维护。
+机器可读实验注册由 [`resolve_experiment`](stage04_experiments.py#L47) 校验。各方案的输入、目标、损失、梯度通道和可识别性统一在技术报告中比较；完成状态和指标只在 Results 中维护。
 
 ### 5.4 统一训练后端
 
-[`configure_from_args`](stage06_barra_training.py#L459) 解析并校验实验组合，[`build_training_model`](stage06_barra_training.py#L778) 构造模型，[`forward_training_model`](stage06_barra_training.py#L902) 分派前向路径，[`effective_predictions`](stage06_barra_training.py#L1884) 决定训练和验证实际使用的分数。
+[`configure_from_args`](stage06_barra_training.py#L217) 解析并校验实验组合，[`build_training_model`](stage06_barra_training.py#L405) 构造模型，[`forward_training_model`](stage06_barra_training.py#L497) 分派前向路径，[`effective_predictions`](stage06_barra_training.py#L1084) 决定训练和验证实际使用的分数。
 
 年度训练以 year×seed 为任务单元：
 
@@ -156,13 +156,13 @@ flowchart LR
     G --> H["三 seed 日截面标准化与集成"]
 ```
 
-单任务入口为 [`train_task`](stage06_barra_training.py#L3651)，年度/种子调度为 [`run_a2`](stage06_barra_training.py#L7373)。后台持久任务由 [`launch_training_job`](stage07_training_jobs.py#L572) 启动，并由 [`training_job_status`](stage07_training_jobs.py#L377) 查询。
+单任务入口为 [`train_task`](stage06_barra_training.py#L2369)，年度/种子调度为 [`run_a2`](stage06_barra_training.py#L4899)。后台持久任务由 [`launch_training_job`](stage07_training_jobs.py#L319) 启动，并由 [`training_job_status`](stage07_training_jobs.py#L197) 查询。
 
 ### 5.5 样本外评价与事后中性化
 
-评价开始前，[`audit_evaluation_inputs`](stage08_factor_evaluation.py#L1402) 要求预测键与目标 Universe 键完全一致。[`run_oos_backtest`](stage08_factor_evaluation.py#L864) 复用 ViT 评价引擎，生成 IC、五分组收益、相对绩效、换手和回撤。
+评价开始前，[`audit_evaluation_inputs`](stage08_factor_evaluation.py#L901) 要求预测键与目标 Universe 键完全一致。[`run_oos_backtest`](stage08_factor_evaluation.py#L553) 复用 ViT 评价引擎，生成 IC、五分组收益、相对绩效、换手和回撤。
 
-事后中性化不会覆盖源预测，而是由 [`build_barra_residual_run`](stage09_barra_postprocess.py#L1631) 生成独立派生 run；[`analyze_barra_exposures`](stage09_barra_postprocess.py#L1011) 输出风险相关性和联合回归诊断。
+事后中性化不会覆盖源预测，而是由 [`build_barra_residual_run`](stage09_barra_postprocess.py#L1011) 生成独立派生 run；[`analyze_barra_exposures`](stage09_barra_postprocess.py#L609) 输出风险相关性和联合回归诊断。
 
 ## 6. 主要产物
 
@@ -198,67 +198,67 @@ ViViT/models/runs/<run_name>/
 
 | 环节 | 函数 |
 |---|---|
-| 图片文件发现 | [`list_image_paths`](../ViT/vit_stage02_universe.py#L45) |
-| 交易所日历 | [`load_calendars`](../ViT/vit_stage02_universe.py#L87)、[`horizon_dates`](../ViT/vit_stage02_universe.py#L127) |
-| 市场状态读取 | [`read_market_status`](../ViT/vit_stage02_universe.py#L228) |
-| Universe 构建 | [`build_universe`](../ViT/vit_stage02_universe.py#L334) |
+| 图片文件发现 | [`list_image_paths`](../ViT/vit_stage02_universe.py#L39) |
+| 交易所日历 | [`load_calendars`](../ViT/vit_stage02_universe.py#L59)、[`horizon_dates`](../ViT/vit_stage02_universe.py#L83) |
+| 市场状态读取 | [`read_market_status`](../ViT/vit_stage02_universe.py#L134) |
+| Universe 构建 | [`build_universe`](../ViT/vit_stage02_universe.py#L203) |
 | 标签构建 | [`build_t10_labels`](../ViT/vit_stage03_labels.py#L18) |
-| 图片归一化与 feature store | [`normalize_pixels`](../ViT/vit_stage04_feature_store.py#L20)、[`build_feature_store`](../ViT/vit_stage04_feature_store.py#L45) |
-| 历史索引与序列 | [`build_history_indices`](stage01_sequence_data.py#L262)、[`build_sequence_store`](stage01_sequence_data.py#L400) |
-| 序列审计 | [`validate_history_indices`](stage01_sequence_data.py#L857)、[`audit_split_alignment`](stage01_sequence_data.py#L896) |
-| 视频 Collator | [`VideoBatchCollator`](stage01_sequence_data.py#L571) |
+| 图片归一化与 feature store | [`normalize_pixels`](../ViT/vit_stage04_feature_store.py#L20)、[`build_feature_store`](../ViT/vit_stage04_feature_store.py#L31) |
+| 历史索引与序列 | [`build_history_indices`](stage01_sequence_data.py#L138)、[`build_sequence_store`](stage01_sequence_data.py#L217) |
+| 序列审计 | [`validate_history_indices`](stage01_sequence_data.py#L470)、[`audit_split_alignment`](stage01_sequence_data.py#L488) |
+| 视频 Collator | [`VideoBatchCollator`](stage01_sequence_data.py#L306) |
 
 ### 7.2 Barra 数据与代数
 
 | 环节 | 函数 |
 |---|---|
-| 股票 ID 转换与反转 | [`instrument_ids_to_assetids`](stage02_market_data.py#L140)、[`_attach_reversal_20d`](stage02_market_data.py#L243) |
-| 统一代数接口 | [`standardize_style_exposure`](stage02_barra_algebra.py#L22)、[`residualize_style_target`](stage02_barra_algebra.py#L48)、[`decompose_full_barra_target`](stage02_barra_algebra.py#L70) |
-| 风格/完整风险投影 | [`project_style_score`](stage02_barra_algebra.py#L100)、[`project_full_barra_score`](stage02_barra_algebra.py#L123) |
-| 联合风险解释度 | [`joint_barra_r_squared`](stage02_barra_algebra.py#L153) |
-| 风险 sidecar | [`build_style_neutral_store`](stage02_barra_data.py#L1982)、[`build_industry_sidecar`](stage02_barra_data.py#L1161) |
-| 完整残差与双塔标签 | [`build_full_barra_target_sidecar`](stage02_barra_data.py#L1417)、[`build_dual_tower_target_sidecar`](stage02_barra_data.py#L1696) |
-| 可微完整投影 | [`project_out_full_barra_torch`](stage02_barra_data.py#L958) |
+| 股票 ID 转换与反转 | [`instrument_ids_to_assetids`](stage02_market_data.py#L98)、[`_attach_reversal_20d`](stage02_market_data.py#L150) |
+| 统一代数接口 | [`standardize_style_exposure`](stage02_barra_algebra.py#L19)、[`residualize_style_target`](stage02_barra_algebra.py#L32)、[`decompose_full_barra_target`](stage02_barra_algebra.py#L44) |
+| 风格/完整风险投影 | [`project_style_score`](stage02_barra_algebra.py#L63)、[`project_full_barra_score`](stage02_barra_algebra.py#L76) |
+| 联合风险解释度 | [`joint_barra_r_squared`](stage02_barra_algebra.py#L95) |
+| 风险 sidecar | [`build_style_neutral_store`](stage02_barra_data.py#L1250)、[`build_industry_sidecar`](stage02_barra_data.py#L707) |
+| 完整残差与双塔标签 | [`build_full_barra_target_sidecar`](stage02_barra_data.py#L868)、[`build_dual_tower_target_sidecar`](stage02_barra_data.py#L1057) |
+| 可微完整投影 | [`project_out_full_barra_torch`](stage02_barra_data.py#L579) |
 
 ### 7.3 模型、损失与训练
 
 | 环节 | 函数 |
 |---|---|
-| ViViT 配置与主干 | [`VivitModelConfig`](stage03_model.py#L12)、[`OrderFlowViViT`](stage03_model.py#L124) |
-| 可微排序 | [`sigmoid_soft_rank`](../ViT/vit_stage06_ranking.py#L81)、[`differentiable_rank_ic`](../ViT/vit_stage06_ranking.py#L150) |
-| No.0–No.2 损失 | [`baseline_loss`](stage04_no0_baseline.py#L11)、[`neutral_training_loss`](stage04_no1_neutral.py#L11)、[`r_squared_regularized_loss`](stage04_no2_r2_penalty.py#L11) |
-| No.3 | [`gradient_reverse`](stage04_no3_adversarial.py#L58)、[`AdversarialBarraViViT`](stage04_no3_adversarial.py#L138) |
-| No.4 | [`prepare_conditioning_inputs`](stage04_no4_gate.py#L65)、[`BarraConditionalViViT`](stage04_no4_gate.py#L115) |
-| No.5 | [`strict_neutral_output`](stage04_no5_strict_neutral.py#L11) |
-| No.6 | [`BarraDualTowerViViT`](stage04_no6_dual_tower.py#L63)、[`dual_tower_training_loss`](stage04_no6_dual_tower.py#L237) |
-| 变体模型工厂 | [`build_training_model`](stage06_barra_training.py#L778)、[`forward_training_model`](stage06_barra_training.py#L902) |
-| 统一训练与预测 | [`train_one_epoch`](stage06_barra_training.py#L2171)、[`evaluate_model`](stage06_barra_training.py#L2623)、[`predict_model`](stage06_barra_training.py#L3108) |
-| 单任务与集成 | [`train_task`](stage06_barra_training.py#L3651)、[`build_ensemble`](stage06_barra_training.py#L4390) |
-| 训练调度 | [`run_a2`](stage06_barra_training.py#L7373)、[`launch_training_job`](stage07_training_jobs.py#L572) |
+| ViViT 配置与主干 | [`VivitModelConfig`](stage03_model.py#L12)、[`OrderFlowViViT`](stage03_model.py#L84) |
+| 可微排序 | [`sigmoid_soft_rank`](../ViT/vit_stage06_ranking.py#L52)、[`differentiable_rank_ic`](../ViT/vit_stage06_ranking.py#L90) |
+| No.0–No.2 损失 | [`baseline_loss`](stage04_no0_baseline.py#L10)、[`neutral_training_loss`](stage04_no1_neutral.py#L10)、[`r_squared_regularized_loss`](stage04_no2_r2_penalty.py#L10) |
+| No.3 | [`gradient_reverse`](stage04_no3_adversarial.py#L35)、[`AdversarialBarraViViT`](stage04_no3_adversarial.py#L80) |
+| No.4 | [`prepare_conditioning_inputs`](stage04_no4_gate.py#L37)、[`BarraConditionalViViT`](stage04_no4_gate.py#L68) |
+| No.5 | [`strict_neutral_output`](stage04_no5_strict_neutral.py#L10) |
+| No.6 | [`BarraDualTowerViViT`](stage04_no6_dual_tower.py#L44)、[`dual_tower_training_loss`](stage04_no6_dual_tower.py#L153) |
+| 变体模型工厂 | [`build_training_model`](stage06_barra_training.py#L405)、[`forward_training_model`](stage06_barra_training.py#L497) |
+| 统一训练与预测 | [`train_one_epoch`](stage06_barra_training.py#L1283)、[`evaluate_model`](stage06_barra_training.py#L1614)、[`predict_model`](stage06_barra_training.py#L1961) |
+| 单任务与集成 | [`train_task`](stage06_barra_training.py#L2369)、[`build_ensemble`](stage06_barra_training.py#L2869) |
+| 训练调度 | [`run_a2`](stage06_barra_training.py#L4899)、[`launch_training_job`](stage07_training_jobs.py#L319) |
 
 ### 7.4 评价与派生因子
 
 | 环节 | 函数 |
 |---|---|
-| 五分组分配 | [`assign_factor_quantiles`](stage08_factor_evaluation.py#L422) |
-| 输入覆盖审计 | [`audit_evaluation_inputs`](stage08_factor_evaluation.py#L1402) |
-| 样本外评价 | [`run_oos_backtest`](stage08_factor_evaluation.py#L864) |
-| 实验对比 | [`compare_factor_evaluations`](stage08_factor_evaluation.py#L991)、[`compare_prediction_signal_pearson`](stage08_factor_evaluation.py#L1120) |
-| 风险暴露分析 | [`analyze_barra_exposures`](stage09_barra_postprocess.py#L1011) |
-| 事后中性化 | [`build_barra_residual_run`](stage09_barra_postprocess.py#L1631) |
-| Barra 输入审计 | [`audit_barra_inputs`](stage09_barra_postprocess.py#L2110) |
+| 五分组分配 | [`assign_factor_quantiles`](stage08_factor_evaluation.py#L264) |
+| 输入覆盖审计 | [`audit_evaluation_inputs`](stage08_factor_evaluation.py#L901) |
+| 样本外评价 | [`run_oos_backtest`](stage08_factor_evaluation.py#L553) |
+| 实验对比 | [`compare_factor_evaluations`](stage08_factor_evaluation.py#L634)、[`compare_prediction_signal_pearson`](stage08_factor_evaluation.py#L718) |
+| 风险暴露分析 | [`analyze_barra_exposures`](stage09_barra_postprocess.py#L609) |
+| 事后中性化 | [`build_barra_residual_run`](stage09_barra_postprocess.py#L1011) |
+| Barra 输入审计 | [`audit_barra_inputs`](stage09_barra_postprocess.py#L1371) |
 
 ## 8. 审计边界
 
 | 风险 | 控制方式 | 关键证据 |
 |---|---|---|
-| 行情重复键导致 merge 膨胀 | 合并前验证股票×日期唯一 | [`read_market_status`](../ViT/vit_stage02_universe.py#L228) |
+| 行情重复键导致 merge 膨胀 | 合并前验证股票×日期唯一 | [`read_market_status`](../ViT/vit_stage02_universe.py#L134) |
 | T 日信号使用不可实现成交价 | 标签固定 T+1 入场 | [`build_t10_labels`](../ViT/vit_stage03_labels.py#L18) |
-| 标签跨越验证或预测边界 | 使用 `exit_trade_date` 做两层 purge | [`build_feature_store`](../ViT/vit_stage04_feature_store.py#L45) |
-| 历史缺帧被前向填充 | 精确日期槽位，缺失=-1 | [`build_history_indices`](stage01_sequence_data.py#L262) |
-| 图片、标签、Barra 错位 | 全链路共享 `sample_index` | [`VideoBatchCollator`](stage01_sequence_data.py#L571) |
-| 日截面被拆批 | Barra 变体强制完整交易日 batch | [`make_style_loaders`](stage06_barra_training.py#L1179) |
-| 训练与发布分数混淆 | 显式维护 raw/effective/published | [`effective_predictions`](stage06_barra_training.py#L1884) |
-| 预测覆盖不完整 | 评价前做键集合全等检查 | [`audit_evaluation_inputs`](stage08_factor_evaluation.py#L1402) |
+| 标签跨越验证或预测边界 | 使用 `exit_trade_date` 做两层 purge | [`build_feature_store`](../ViT/vit_stage04_feature_store.py#L31) |
+| 历史缺帧被前向填充 | 精确日期槽位，缺失=-1 | [`build_history_indices`](stage01_sequence_data.py#L138) |
+| 图片、标签、Barra 错位 | 全链路共享 `sample_index` | [`VideoBatchCollator`](stage01_sequence_data.py#L306) |
+| 日截面被拆批 | Barra 变体强制完整交易日 batch | [`make_style_loaders`](stage06_barra_training.py#L673) |
+| 训练与发布分数混淆 | 显式维护 raw/effective/published | [`effective_predictions`](stage06_barra_training.py#L1084) |
+| 预测覆盖不完整 | 评价前做键集合全等检查 | [`audit_evaluation_inputs`](stage08_factor_evaluation.py#L901) |
 
 这份 README 是工程流程和源码定位的唯一入口。方案原理不在此重复，实验指标也不在此维护。

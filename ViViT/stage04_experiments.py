@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from typing import Literal
 
 
-# 读取 `Literal['no0', 'no1_y', 'no1_x', 'no1_xy', 'no2', 'no3', 'no4', 'no5', 'no6']` 的当前值，并赋给 `ExperimentId`。
 ExperimentId = Literal[
     "no0",
     "no1_y",
@@ -25,19 +24,13 @@ class ExperimentSpec:
     """Notebook、CLI 和训练器共享的方案元数据。
     """
 
-    # 声明 `experiment_id` 的数据类型，明确后续读写契约。
     experiment_id: ExperimentId
-    # 声明 `title` 的数据类型，明确后续读写契约。
     title: str
-    # 声明 `uses_barra_as_model_input` 的数据类型，明确后续读写契约。
     uses_barra_as_model_input: bool
-    # 声明 `uses_barra_in_loss` 的数据类型，明确后续读写契约。
     uses_barra_in_loss: bool
-    # 声明 `publishes_strict_neutral_score` 的数据类型，明确后续读写契约。
     publishes_strict_neutral_score: bool
 
 
-# 构造键值映射，并保存到 `EXPERIMENTS`，供后续按键查询。
 EXPERIMENTS: dict[ExperimentId, ExperimentSpec] = {
     "no0": ExperimentSpec("no0", "Baseline", False, False, False),
     "no1_y": ExperimentSpec("no1_y", "Y neutral", False, True, False),
@@ -51,23 +44,12 @@ EXPERIMENTS: dict[ExperimentId, ExperimentSpec] = {
 }
 
 
-# 定义 `resolve_experiment` 函数，封装这一阶段可独立调用的处理步骤。
 def resolve_experiment(experiment_id: str) -> ExperimentSpec:
-    """校验实验编号并返回不可变方案元数据。
-    
-    输入：
-        experiment_id: str。
-    输出：
-        ExperimentSpec。
-        """
+    """校验实验编号并返回不可变方案元数据。"""
 
-    # 尝试执行本段主逻辑；若发生异常，则交由后续异常分支处理。
     try:
-        # 将 `EXPERIMENTS[experiment_id]` 作为当前函数结果返回给调用方。
         return EXPERIMENTS[experiment_id]  # type: ignore[index]
-    # 捕获 `except KeyError as error` 对应的异常，并执行明确的降级、记录或清理逻辑。
     except KeyError as error:
-        # 抛出 `ValueError(f'未知实验编号 {experiment_id!r}；可选 {tuple(EXPERIMENTS)}')`，阻止不满足数据契约的流程继续执行。
         raise ValueError(
             f"未知实验编号 {experiment_id!r}；可选 {tuple(EXPERIMENTS)}"
         ) from error

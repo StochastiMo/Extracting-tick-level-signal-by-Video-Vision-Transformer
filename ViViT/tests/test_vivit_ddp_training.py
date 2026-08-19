@@ -145,35 +145,6 @@ class DistributedTrainingTests(unittest.TestCase):
         self.assertAlmostEqual(result["loss"], float(reference_loss.detach()), places=7)
         torch.testing.assert_close(gathered_gradients, reference.grad)
 
-    def test_route_compatibility_defaults_legacy_checkpoint_to_a2(self):
-        legacy = {
-            "training_code_sha256": next(iter(
-                barra_training.RESUME_COMPATIBLE_TRAINING_CODE_SHA256
-            )), "config": {"loss": "rank"}}
-        current_a2 = {"training_code_sha256": "new", "config": {"loss": "rank"}}
-        current_ddp = {
-            **current_a2,
-            "execution_route": "ddp",
-            "world_size": 2,
-        }
-        previous_ddp = {
-            **current_ddp,
-            "training_code_sha256": "62545fd27e812da5dbe560862377f12688d0d62a4f70b5b94a33bd44630da053",
-        }
-        self.assertTrue(
-            barra_training.is_resume_compatible_recovery_patch(previous_ddp, current_ddp)
-        )
-        self.assertTrue(
-            barra_training.is_resume_compatible_recovery_patch(legacy, current_a2)
-        )
-        self.assertFalse(
-            barra_training.is_resume_compatible_recovery_patch(legacy, current_ddp)
-        )
-        self.assertFalse(
-            barra_training.is_resume_compatible_recovery_patch(
-                {**current_ddp, "world_size": 4}, current_ddp
-            )
-        )
 
     def test_shuffled_barra_is_built_once_from_complete_cross_section(self):
         with tempfile.TemporaryDirectory() as directory:

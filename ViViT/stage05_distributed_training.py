@@ -279,4 +279,3 @@ def restore_rng_state(state: dict[str, Any], device: torch.device) -> None:
     torch.set_rng_state(state["torch_rng_state"])
     if device.type == "cuda" and state.get("cuda_rng_state") is not None:
         torch.cuda.set_rng_state(state["cuda_rng_state"], device)
-
