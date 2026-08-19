@@ -12,100 +12,100 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-VIT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = VIT_DIR.parent
-LEVEL2_DIR = PROJECT_ROOT / "level2_pic"
-WIND_DIR = PROJECT_ROOT / "Wind"
-EOD_PATH = WIND_DIR / "ASHAREEODPRICES.parquet"
-DERIVATIVE_PATH = WIND_DIR / "ASHAREEODDERIVATIVEINDICATOR.parquet"
-CALENDAR_PATH = WIND_DIR / "ASHARECALENDAR.parquet"
-IMAGE_PATTERN = re.compile(r"^stock_pixels_cn\.(\d{8})\.npz$")
+VIT_DIR = Path(__file__).resolve().parent  # 定位vit目录。
+PROJECT_ROOT = VIT_DIR.parent  # 定位项目根目录。
+LEVEL2_DIR = PROJECT_ROOT / "level2_pic"  # 定位level2目录。
+WIND_DIR = PROJECT_ROOT / "Wind"  # 定位wind目录。
+EOD_PATH = WIND_DIR / "ASHAREEODPRICES.parquet"  # 定位日行情路径。
+DERIVATIVE_PATH = WIND_DIR / "ASHAREEODDERIVATIVEINDICATOR.parquet"  # 定位衍生指标路径。
+CALENDAR_PATH = WIND_DIR / "ASHARECALENDAR.parquet"  # 定位交易日历路径。
+IMAGE_PATTERN = re.compile(r"^stock_pixels_cn\.(\d{8})\.npz$")  # 编译图像pattern匹配规则。
 # 构造去重集合，并保存到 `REQUIRED_IMAGE_KEYS`。
-REQUIRED_IMAGE_KEYS = {"trade_date", "instrument_ids", "pixel_matrices", "valid_mask", "channel_names", "axis_order"}
+REQUIRED_IMAGE_KEYS = {"trade_date", "instrument_ids", "pixel_matrices", "valid_mask", "channel_names", "axis_order"}  # 集中声明必需图像键。
 
 
-def get_data_root() -> Path:
+def get_data_root() -> Path:  # 返回 ViT 数据根目录。
     """返回 ViT 数据根目录；测试可用 ``VIT_DATA_ROOT`` 覆盖。"""
 
-    return Path(os.getenv("VIT_DATA_ROOT", str(VIT_DIR / "data"))).expanduser()
+    return Path(os.getenv("VIT_DATA_ROOT", str(VIT_DIR / "data"))).expanduser()  # 返回 ViT 数据根目录。
 
 
-def read_bool_environment(name: str, default: bool = False) -> bool:
+def read_bool_environment(name: str, default: bool = False) -> bool:  # 读取布尔环境变量，未设置时返回 ``default``。
     """读取布尔环境变量，未设置时返回 ``default``。"""
 
     value = os.getenv(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "y"}
+    if value is None:  # 检查所需对象是否尚未初始化。
+        return default  # 返回默认。
+    return value.strip().lower() in {"1", "true", "yes", "y"}  # 返回读取并校验后的结果。
 
 
-def normalize_dates(values: pd.Series) -> pd.Series:
+def normalize_dates(values: pd.Series) -> pd.Series:  # 把日期列统一转换为八位 ``YYYYMMDD`` 字符串。
     """把日期列统一转换为八位 ``YYYYMMDD`` 字符串。"""
 
-    return values.astype("string").str.replace(
+    return values.astype("string").str.replace(  # 返回完成上述格式转换后的结果。
         r"\.0$", "", regex=True
     ).str.zfill(8)
 
 
-def stable_hash(payload: object) -> str:
+def stable_hash(payload: object) -> str:  # 对可 JSON 序列化对象计算稳定 SHA-256。
     """对可 JSON 序列化对象计算稳定 SHA-256。"""
 
     text = json.dumps(
         payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     )
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()  # 返回稳定的 SHA-256 十六进制摘要。
 
 
-def file_signature(path: Path) -> dict[str, object]:
+def file_signature(path: Path) -> dict[str, object]:  # 返回完成上述回归或变换后的结果。
     """返回用于 lineage 的文件名、字节数和纳秒修改时间。"""
 
     stat = path.stat()
-    return {
+    return {  # 返回完成上述回归或变换后的结果。
         "name": path.name,
         "size": stat.st_size,
         "mtime_ns": stat.st_mtime_ns,
     }
 
 
-def read_json(path: Path) -> dict[str, Any] | None:
+def read_json(path: Path) -> dict[str, Any] | None:  # 读取 JSON。
     """读取 JSON；文件不存在时返回 ``None``。"""
 
-    if not path.exists():
-        return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    if not path.exists():  # 检查目标文件或目录是否满足存在性要求。
+        return None  # 当前分支无可用结果，返回空值。
+    return json.loads(path.read_text(encoding="utf-8"))  # 解析并返回 JSON 文件内容。
 
 
-def atomic_json(payload: dict[str, object], path: Path) -> None:
+def atomic_json(payload: dict[str, object], path: Path) -> None:  # 先写临时文件再原子替换 JSON 目标。
     """先写临时文件再原子替换 JSON 目标。"""
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(
+    path.parent.mkdir(parents=True, exist_ok=True)  # 确保目标目录存在。
+    temporary = path.with_name(  # 构造临时文件。
         f"{path.name}.{os.getpid()}.{time.time_ns()}.tmp"
     )
-    temporary.write_text(
+    temporary.write_text(  # 把文本结果写入临时或目标文件。
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    temporary.replace(path)
+    temporary.replace(path)  # 用临时文件原子替换正式结果。
 
 
-def atomic_parquet(frame: pd.DataFrame, path: Path) -> None:
+def atomic_parquet(frame: pd.DataFrame, path: Path) -> None:  # 以 Zstandard 压缩写入 Parquet，并原子替换目标。
     """以 Zstandard 压缩写入 Parquet，并原子替换目标。"""
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(
+    path.parent.mkdir(parents=True, exist_ok=True)  # 确保目标目录存在。
+    temporary = path.with_name(  # 构造临时文件。
         f"{path.name}.{os.getpid()}.{time.time_ns()}.tmp"
     )
-    frame.to_parquet(temporary, index=False, compression="zstd")
-    temporary.replace(path)
+    frame.to_parquet(temporary, index=False, compression="zstd")  # 把表格按约定格式写入 Parquet。
+    temporary.replace(path)  # 用临时文件原子替换正式结果。
 
 
-def atomic_npz(path: Path, **arrays: np.ndarray) -> None:
+def atomic_npz(path: Path, **arrays: np.ndarray) -> None:  # 原子写入一组 NumPy 数组。
     """原子写入一组 NumPy 数组。"""
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)  # 确保目标目录存在。
     temporary = path.with_name(
         f"{path.name}.{os.getpid()}.{time.time_ns()}.tmp"
     )
-    with temporary.open("wb") as file_object:
+    with temporary.open("wb") as file_object:  # 按指定模式打开文件并确保退出时关闭句柄。
         np.savez(file_object, **arrays)
     temporary.replace(path)

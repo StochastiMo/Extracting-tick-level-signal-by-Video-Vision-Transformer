@@ -96,7 +96,7 @@ class OrderFlowViViT(nn.Module):  # 定义订单流视频的完整 ViViT 回归�
         )
         self.spatial_tokens = patches_per_side**2  # 4×4=16，即每个时间 tubelet 有 16 个空间 token。
 
-        # 2×2×2 Conv3d 同时进行两帧聚合和 2×2 空间切块。
+  # 2×2×2 Conv3d 同时进行两帧聚合和 2×2 空间切块。
         self.tubelet_embedding = nn.Conv3d(  # 用三维卷积完成切块并映射到 token embedding。
             config.input_channels,  # 输入通道数为 17。
             config.embedding_dim,  # 输出通道数为 128，即每个 token 的维度。
@@ -198,12 +198,12 @@ class OrderFlowViViT(nn.Module):  # 定义订单流视频的完整 ViViT 回归�
             "每个视频的目标日帧必须有效",  # 断言失败时说明数据约束。
         )
 
-        # [B,17,20,8,8] -> [B,128,10,4,4]。
+  # [B,17,20,8,8] -> [B,128,10,4,4]。
         embedded = self.tubelet_embedding(videos)  # 将原始视频切成 tubelet 并得到 128 维特征。
         batch_size = embedded.shape[0]  # 读取批量大小，供后续 reshape 使用。
 
-        # 每两帧统计 0/1/2 个有效帧，作为 coverage embedding 的索引。
-        coverage = frame_mask.reshape(  # 把 20 帧按每 2 帧一个 tubelet 分组。
+  # 每两帧统计 0/1/2 个有效帧，作为 coverage embedding 的索引。
+        coverage = frame_mask.reshape(  # [B,20] -> [B,10,2]，每两帧组成一个 tubelet。
             batch_size,  # 保留批量维 B。
             self.temporal_tokens,  # 分成 10 个时间 tubelet。
             self.config.temporal_tubelet,  # 每组包含 2 个原始帧标记。
@@ -214,15 +214,15 @@ class OrderFlowViViT(nn.Module):  # 定义订单流视频的完整 ViViT 回归�
             coverage  # 输入 0、1、2 索引，输出形状为 [B,10,128]。
         )
 
-        # 对每个时间 tubelet 内的 16 个空间 token 独立编码。
-        spatial = embedded.permute(  # 将通道维移动到最后，方便组织 token 序列。
+  # 对每个时间 tubelet 内的 16 个空间 token 独立编码。
+        spatial = embedded.permute(  # [B,128,10,4,4] -> [B,10,4,4,128]。
             0, 2, 3, 4, 1  # [B,128,10,4,4] 变成 [B,10,4,4,128]。
-        ).reshape(  # 合并批量和时间维，并展平 4×4 空间网格。
+        ).reshape(  # [B,10,4,4,128] -> [B×10,16,128]。
             batch_size * self.temporal_tokens,  # 让每个时间 tubelet 成为独立空间样本。
             self.spatial_tokens,  # 每个空间序列包含 16 个 token。
             self.config.embedding_dim,  # 每个空间 token 维度为 128。
         )
-        spatial_coverage = coverage_embedding.reshape(  # 调整 coverage 向量以匹配空间序列批次。
+        spatial_coverage = coverage_embedding.reshape(  # [B,10,128] -> [B×10,1,128]。
             batch_size * self.temporal_tokens,  # 与 spatial 第一维的 B×10 对齐。
             1,  # 每个 tubelet 只有一个 coverage 向量，之后广播给 16 个 token。
             self.config.embedding_dim,  # coverage 向量维度为 128。
@@ -236,13 +236,13 @@ class OrderFlowViViT(nn.Module):  # 定义订单流视频的完整 ViViT 回归�
             spatial = block(spatial)  # 每层执行空间自注意力和内部 MLP。
         frame_tokens = spatial.mean(  # 对同一 tubelet 的 16 个空间 token 做均值池化。
             dim=1  # 沿空间 token 维求均值，得到一个时间表示。
-        ).reshape(  # 恢复原本的批量维和时间维。
+        ).reshape(  # [B×10,128] -> [B,10,128]。
             batch_size,  # 第一维恢复为 B。
             self.temporal_tokens,  # 第二维恢复为 10 个时间 token。
             self.config.embedding_dim,  # 每个时间 token 保持 128 维。
         )
 
-        # CLS 永远有效；coverage=0 的 tubelet 不参与时序 attention。
+  # CLS 永远有效；coverage=0 的 tubelet 不参与时序 attention。
         class_tokens = self.temporal_class_token.expand(  # 为批量中的每个样本复制 CLS token 视图。
             batch_size, -1, -1  # 从 [1,1,128] 扩展为 [B,1,128]。
         )
@@ -279,5 +279,5 @@ class OrderFlowViViT(nn.Module):  # 定义订单流视频的完整 ViViT 回归�
         """输入 [B,17,20,8,8] 与 [B,20]，返回 raw score [B]。"""
 
         representation = self.encode(videos, frame_mask)  # 先获得每个视频的 128 维 CLS 表征。
-        return self.regression_head(representation).squeeze(-1)  # 线性映射为分数并移除末尾单维。
+        return self.regression_head(representation).squeeze(-1)  # [B,1] -> [B]，移除回归头末尾单维。
 # endregion  # 结束公共 ViViT 模型区域。
