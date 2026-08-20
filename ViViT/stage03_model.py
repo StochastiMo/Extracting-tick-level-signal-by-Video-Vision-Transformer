@@ -80,7 +80,7 @@ class TransformerEncoderBlock(nn.Module):  # 定义可同时复用于空间和�
         return tokens + self.mlp(self.mlp_norm(tokens))  # 将内部 MLP 输出再次残差相加。
 
 
-# region TR-COMMON-VIVIT-MODEL  # 标记可被其他脚本同步使用的公共 ViViT 模型区域。
+
 class OrderFlowViViT(nn.Module):  # 定义订单流视频的完整 ViViT 回归模型。
     """把 20 日订单流视频编码为 128 维 CLS 表征和一个 raw score。
     """
@@ -280,4 +280,3 @@ class OrderFlowViViT(nn.Module):  # 定义订单流视频的完整 ViViT 回归�
 
         representation = self.encode(videos, frame_mask)  # 先获得每个视频的 128 维 CLS 表征。
         return self.regression_head(representation).squeeze(-1)  # [B,1] -> [B]，移除回归头末尾单维。
-# endregion  # 结束公共 ViViT 模型区域。

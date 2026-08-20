@@ -35,7 +35,7 @@ class UniverseBuildResult(TypedDict):  # Universe 构建函数的稳定返回结
     signature: str  # 接收签名。
 
 
-# region TR-DATA-UNIVERSE-DISCOVERY
+
 def list_image_paths(max_dates_variable: str | None = None) -> dict[str, Path]:  # 发现日度图像文件并返回 ``交易日 -> 文件路径`` 的有序映射。
     """发现日度图像文件并返回 ``交易日 -> 文件路径`` 的有序映射。"""
 
@@ -127,10 +127,10 @@ def read_image_metadata(  # 校验图像 NPZ 契约，返回股票代码和独�
         if len(np.unique(instruments)) != len(instruments):  # 检查当前样本数量是否满足计算要求。
             raise ValueError(f"{path.name} instrument_ids 重复")  # 输入数据不满足业务或数值约束时立即终止。
     return instruments, valid_mask  # 返回校验图像 NPZ 契约，返回股票代码和独立特征有效标记。
-# endregion
 
 
-# region TR-DATA-UNIVERSE-STATUS
+
+
 def read_market_status(  # 读取所需停牌和涨跌停状态，并验证 ``股票×日期`` 唯一。
     required_dates: set[str], required_codes: set[str]
 ) -> pd.DataFrame:  # 声明当前函数的返回类型。
@@ -196,10 +196,10 @@ def classify_market_eligibility(candidates: pd.DataFrame) -> pd.DataFrame:  # �
         & ~output["limit_status_t1"].isin([-1, 1])
     )
     return output  # 返回输出。
-# endregion
 
 
-# region TR-DATA-UNIVERSE-BUILD
+
+
 def build_universe() -> UniverseBuildResult:  # 构建全市场有效 Universe、逐日质量表和 lineage manifest。
     """构建全市场有效 Universe、逐日质量表和 lineage manifest。"""
 
@@ -401,7 +401,7 @@ def build_universe() -> UniverseBuildResult:  # 构建全市场有效 Universe�
         "quality_path": str(quality_path),  # 记录质量路径。
         "signature": signature,  # 记录签名。
     }
-# endregion
+
 
 
 def _daily_quality_record(  # 汇总一日 Universe 的逐步过滤数量守恒信息。

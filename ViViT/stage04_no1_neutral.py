@@ -6,7 +6,7 @@ from collections.abc import Callable
 import torch
 
 
-# region TR-N01-LOSS
+
 def neutral_training_loss(  # 返回训练损失及损失真正看到的 effective score。
     raw_score: torch.Tensor,  # [B]，原始预测分数。
     targets: torch.Tensor,  # [B]，训练标签。
@@ -26,4 +26,3 @@ def neutral_training_loss(  # 返回训练损失及损失真正看到的 effecti
         else raw_score
     )
     return rank_loss(effective_score, targets), effective_score  # 返回训练损失及损失真正看到的 effective score。
-# endregion

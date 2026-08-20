@@ -6,7 +6,7 @@ from collections.abc import Callable
 import torch
 
 
-# region TR-N02-LOSS
+
 def r_squared_regularized_loss(  # 返回排序损失、联合 R² 和两者的加权和。
     raw_score: torch.Tensor,  # [B]，原始预测分数。
     targets: torch.Tensor,  # [B]，训练标签。
@@ -30,4 +30,3 @@ def r_squared_regularized_loss(  # 返回排序损失、联合 R² 和两者的�
         "predictive_loss": predictive_loss,  # 记录predictive损失。
         "barra_r_squared": r_squared,  # 记录Barrarsquared。
     }
-# endregion

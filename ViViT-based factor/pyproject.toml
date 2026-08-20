@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vivit-factor"
+version = "1.0.0"
+description = "ViViT 基线因子的数据准备、模型训练与样本外因子生成流水线"
+requires-python = ">=3.10"
+dependencies = ["numpy", "pandas", "pyarrow", "torch"]
+
+[project.scripts]
+vivit-factor = "vivit_factor.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["vivit_factor*"]

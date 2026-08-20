@@ -48,7 +48,7 @@ def negative_pearson_ic(  # 返回可直接最小化的负 Pearson IC。
     return -pearson_correlation(predictions, targets)  # 返回可直接最小化的负 Pearson IC。
 
 
-# region TR-COMMON-SOFT-RANK
+
 def sigmoid_soft_rank(  # 通过所有两两 Sigmoid 比较近似降序名次。
     values: torch.Tensor, temperature: float  # values:[N]。
 ) -> torch.Tensor:  # 声明当前函数的返回类型。
@@ -106,7 +106,7 @@ def differentiable_rank_ic(  # 对预测和标签使用同一种软排序，再�
     with torch.no_grad():  # 关闭梯度记录以降低验证或推理开销。
         target_ranks = rank_function(targets.detach(), temperature)  # 计算标签排名。
     return pearson_correlation(prediction_ranks, target_ranks)  # 返回完成上述处理后的结果。
-# endregion
+
 
 
 def temporal_turnover_loss_components(  # 返回预测 RankIC、相邻日秩相关、换手惩罚及总损失。
@@ -156,7 +156,7 @@ def temporal_turnover_loss_components(  # 返回预测 RankIC、相邻日秩相�
     }
 
 
-# region TR-COMMON-TRAINING-LOSS
+
 def compute_training_loss(  # 根据显式配置返回一个标量训练损失。
     predictions: torch.Tensor,  # [N]，截面预测分数。
     targets: torch.Tensor,  # [N]，截面标签。
@@ -227,4 +227,3 @@ def compute_training_loss(  # 根据显式配置返回一个标量训练损失�
     return hybrid_weight * pearson_term + (  # 返回根据显式配置返回一个标量训练损失。
         1 - hybrid_weight
     ) * huber_term
-# endregion

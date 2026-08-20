@@ -64,7 +64,7 @@ def prepare_conditioning_inputs(  # 生成 real/shuffled/zero 条件输入，不
     )
 
 
-# region TR-N04-GATE
+
 class BarraConditionalViViT(nn.Module):  # 用十风格、有效标记和行业对 CLS 做有界乘法调制。
     """用十风格、有效标记和行业对 CLS 做有界乘法调制。
     """
@@ -165,4 +165,3 @@ class BarraConditionalViViT(nn.Module):  # 用十风格、有效标记和行业�
             conditioned
         ).squeeze(-1)  # [B,1] -> [B]。
         return raw_score, gate, representation  # 返回 raw score、门控向量和未条件化 CLS。
-# endregion

@@ -31,7 +31,7 @@ class _GradientReversal(torch.autograd.Function):  # 前向恒等、反向乘以
         return -gamma * gradient, None  # 返回backward。
 
 
-# region TR-N03-GRL
+
 def gradient_reverse(  # 保持前向值不变，让编码器收到负 gamma 倍梯度。
     values: torch.Tensor, gamma: float | torch.Tensor  # values [B,D]；gamma []。
 ) -> torch.Tensor:
@@ -41,7 +41,7 @@ def gradient_reverse(  # 保持前向值不变，让编码器收到负 gamma 倍
         gamma, dtype=values.dtype, device=values.device
     )
     return _GradientReversal.apply(values, coefficient)  # 返回保持前向值不变，让编码器收到负 gamma 倍梯度。
-# endregion
+
 
 
 def cosine_adversarial_gamma(  # 按绝对 epoch 计算预热、余弦爬坡和稳定阶段的 GRL 系数。
@@ -76,7 +76,7 @@ def _adversarial_head(  # 构造一个两层对抗预测头。
     )
 
 
-# region TR-N03-MODEL
+
 class AdversarialBarraViViT(nn.Module):  # 收益头预测 Alpha，对抗头尝试从 CLS 恢复风格和行业。
     """收益头预测 Alpha，对抗头尝试从 CLS 恢复风格和行业。
     """
@@ -134,4 +134,3 @@ class AdversarialBarraViViT(nn.Module):  # 收益头预测 Alpha，对抗头尝�
             self.industry_head(reversed_representation),  # [B,32]。
             representation,  # [B,D]。
         )
-# endregion

@@ -24,7 +24,7 @@ class VitModelConfig:  # ViT 结构参数。
     output_dim: int = 1
 
 
-# region TR-COMMON-VIT-MODEL
+
 class PatchEmbedding(nn.Module):  # 把 8×8 图像切成不重叠空间 patch 并映射到 token。
     """把 8×8 图像切成不重叠空间 patch 并映射到 token。"""
 
@@ -135,4 +135,3 @@ class OrderFlowVisionTransformer(nn.Module):  # 从单日订单流图像产生�
         for block in self.blocks:  # 遍历blocks，逐项处理block。
             tokens = block(tokens)  # 依次通过 Transformer block。
         return self.head(self.final_norm(tokens[:, 0])).squeeze(-1)  # [B,1] -> [B]。
-# endregion

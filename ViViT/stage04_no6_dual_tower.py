@@ -40,7 +40,7 @@ def prepare_dual_tower_inputs(  # 返回 Alpha 塔与 Style 塔的条件输入�
     return transformed, transformed  # 返回 Alpha 塔与 Style 塔的条件输入。
 
 
-# region TR-N06-MODEL
+
 class BarraDualTowerViViT(nn.Module):  # 条件 Alpha 塔与独立 Barra Style 塔。
     """条件 Alpha 塔与独立 Barra Style 塔。
     """
@@ -146,10 +146,10 @@ class BarraDualTowerViViT(nn.Module):  # 条件 Alpha 塔与独立 Barra Style �
             gate,
             representation,
         )
-# endregion
 
 
-# region TR-N06-LOSS
+
+
 def dual_tower_training_loss(  # 计算总收益、Alpha、Style 和 Alpha 暴露四项损失。
     alpha_score: torch.Tensor,  # [B]，Alpha 塔分数。
     style_score: torch.Tensor,  # [B]，Style 塔分数。
@@ -197,4 +197,3 @@ def dual_tower_training_loss(  # 计算总收益、Alpha、Style 和 Alpha 暴�
         "style_rank_loss": style_loss,  # 记录风格秩损失。
         "alpha_barra_r_squared": alpha_r_squared,  # 记录AlphaBarrarsquared。
     }
-# endregion
