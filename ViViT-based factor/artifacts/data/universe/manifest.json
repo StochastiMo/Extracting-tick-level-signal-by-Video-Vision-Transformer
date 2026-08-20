@@ -1,0 +1,35 @@
+{
+  "signature": "11d253de641741497eb65b184ec0fc42f8d3a28832d5cdeb901cae3a08315aa3",
+  "payload": {
+    "schema_version": 1,
+    "image_hash": "5d50ac7039040d16bd79947a1251cd769a9d509080393c0fdb6b6e908833284e",
+    "eod": {
+      "name": "ASHAREEODPRICES.parquet",
+      "size": 1312704629,
+      "mtime_ns": 1784527001514095592
+    },
+    "derivative": {
+      "name": "ASHAREEODDERIVATIVEINDICATOR.parquet",
+      "size": 1828243932,
+      "mtime_ns": 1784701006396178144
+    },
+    "calendar": {
+      "name": "ASHARECALENDAR.parquet",
+      "size": 194206,
+      "mtime_ns": 1784527004450125526
+    },
+    "rule": "valid T image; T and T+1 not suspended; T+1 not limit up/down"
+  },
+  "years": [
+    "2017",
+    "2018",
+    "2019",
+    "2020",
+    "2021",
+    "2022",
+    "2023",
+    "2024"
+  ],
+  "candidate_rows": 8032916,
+  "eligible_rows": 7845072
+}

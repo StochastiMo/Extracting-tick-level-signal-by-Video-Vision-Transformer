@@ -1,0 +1,15 @@
+{
+  "signature": "cff36ffe069b6f5e21c618bb6ba75a6f098a7d69894fb831f2f3591312ba4c28",
+  "summary": {
+    "forecast_year": 2018,
+    "seed": 43,
+    "best_epoch": 7,
+    "best_validation_ic": 0.18307769828273535,
+    "last_epoch": 17,
+    "physical_gpu": 1,
+    "execution_route": "independent_gpu_tasks",
+    "prediction_samples": 796223,
+    "elapsed_seconds": 736.1351835653186,
+    "status": "completed"
+  }
+}

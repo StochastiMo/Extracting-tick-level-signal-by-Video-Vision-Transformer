@@ -3,12 +3,14 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 import torch
 
 from vivit_factor.data import (
+    PipelinePaths,
     SampleIndexDataset,
     TradeDateBatchSampler,
     build_history_indices,
@@ -17,6 +19,7 @@ from vivit_factor.data import (
     mad_winsorize_zscore,
 )
 from vivit_factor.model import OrderFlowViViT, ViViTConfig, sigmoid_rank_ic_loss
+from vivit_factor import training
 
 
 class PipelineTests(unittest.TestCase):
@@ -92,6 +95,49 @@ class PipelineTests(unittest.TestCase):
         sampler = TradeDateBatchSampler(global_indices, date_ids, seed=7)
         batches = [[dataset[position] for position in batch] for batch in sampler]
         self.assertCountEqual(batches, [[10, 11], [30, 31, 32]])
+
+    def test_factor_is_built_before_next_year_starts(self) -> None:
+        # 用立即结束的假进程验证调度时序，不实际占用 GPU 或训练模型。
+        events = []
+
+        class FinishedProcess:
+            def __init__(self, command, **_) -> None:
+                year = int(command[command.index("--forecast-year") + 1])
+                events.append(("launch", year))
+                self.pid = year
+
+            def poll(self) -> int:
+                return 0
+
+            def terminate(self) -> None:
+                pass
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = PipelinePaths(root, root / "level2_pic", root / "Wind", root / "artifacts")
+            for year in (2018, 2019):
+                completed = paths.models_dir / "baseline" / f"forecast_{year}" / "seed_42" / "completed.json"
+                completed.parent.mkdir(parents=True)
+                completed.write_text(
+                    f'{{"summary": {{"forecast_year": {year}, "seed": 42}}}}',
+                    encoding="utf-8",
+                )
+
+            def record_factor(_, year: int) -> int:
+                events.append(("factor", year))
+                return 1
+
+            with (
+                patch.object(training, "FORECAST_YEARS", (2018, 2019)),
+                patch.object(training, "SEEDS", (42,)),
+                patch.object(training.torch.cuda, "device_count", return_value=1),
+                patch.object(training.subprocess, "Popen", FinishedProcess),
+                patch.object(training, "build_oos_factor", side_effect=record_factor),
+                patch.object(training, "validate_outputs", return_value=pd.DataFrame()),
+            ):
+                training.run_parallel_training(paths, device_ids=(0,), workers=0)
+
+        self.assertLess(events.index(("factor", 2018)), events.index(("launch", 2019)))
 
 
 if __name__ == "__main__":

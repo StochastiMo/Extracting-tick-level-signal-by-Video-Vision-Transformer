@@ -1,0 +1,15 @@
+{
+  "signature": "68deb8cb66b6eae0f1e45444090bbfd8b7407975c16e00ac216243e79fc8938a",
+  "summary": {
+    "forecast_year": 2021,
+    "seed": 42,
+    "best_epoch": 14,
+    "best_validation_ic": 0.12946537342290054,
+    "last_epoch": 24,
+    "physical_gpu": 0,
+    "execution_route": "independent_gpu_tasks",
+    "prediction_samples": 1027409,
+    "elapsed_seconds": 4208.947953298688,
+    "status": "completed"
+  }
+}
